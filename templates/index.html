@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Volkswagen Monitoring Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://bernii.github.io/gauge.js/dist/gauge.min.js"></script>
+  </head>
+  <body class="bg-gray-900 text-gray-100">
+    <div class="relative overflow-x-hidden">
+      <!-- Main Dashboard -->
+      <div class="min-w-full">
+        <div class="p-4">
+          <h1 class="text-3xl font-bold text-center text-blue-400 mb-8">
+            Volkswagen Monitoring Dashboard
+          </h1>
+
+          <!-- Stats Section -->
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-6">
+            <div class="bg-gray-800 shadow-lg rounded-lg p-4 text-center border border-gray-700">
+              <h3 class="text-lg font-semibold text-gray-400 mb-2">Current Heart Rate ♥</h3>
+              <p id="current-heart-rate" class="text-2xl font-bold text-blue-400">0 BPM</p>
+            </div>
+            <div class="bg-gray-800 shadow-lg rounded-lg p-4 text-center border border-gray-700">
+              <h3 class="text-lg font-semibold text-gray-400 mb-2">Ultrasonic Distance 🔊</h3>
+              <p id="current-ultrasonic" class="text-2xl font-bold text-green-400">0 cm</p>
+            </div>
+            <div class="bg-gray-800 shadow-lg rounded-lg p-4 text-center border border-gray-700">
+              <h3 class="text-lg font-semibold text-gray-400 mb-2">Status</h3>
+              <p id="status-emoji" class="text-4xl">😊</p>
+            </div>
+            <div class="bg-gray-800 shadow-lg rounded-lg p-4 text-center border border-gray-700">
+              <h3 class="text-lg font-semibold text-gray-400 mb-2">Anomalies 📈</h3>
+              <p id="anomaly-count" class="text-2xl font-bold text-red-400">0</p>
+            </div>
+          </div>
+
+          <!-- Alert Box -->
+          <div
+            id="alert-box"
+            class="hidden bg-red-900 text-white font-semibold rounded-lg p-4 shadow-lg mb-6 border border-red-700"
+          >
+            <strong>Critical Alert!</strong>
+            <p id="alert-message" class="mt-2"></p>
+          </div>
+
+          <!-- Charts Section -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Heart Rate Chart -->
+            <div class="bg-gray-800 shadow-lg rounded-lg p-4 border border-gray-700">
+              <h3 class="text-lg font-semibold text-blue-400 mb-4">Heart Rate Monitor 🖥</h3>
+              <div style="height: 300px">
+                <canvas id="heartRateChart"></canvas>
+              </div>
+            </div>
+            <!-- SPO2 Level Gauge -->
+            <div class="bg-gray-800 shadow-lg rounded-lg p-4 border border-gray-700">
+              <h3 class="text-lg font-semibold text-blue-400 mb-4">SPO2 Level Monitor 🖥</h3>
+              <div style="height: 300px" class="flex flex-col items-center justify-center relative">
+                <canvas id="spo2Gauge"></canvas>
+                <div class="absolute top-1 transform -translate-y-1/2">
+                  <p id="current-spo2-level" class="text-4xl font-bold text-blue-400">0%</p>
+                </div>
+                <div id="spo2-zone" class="mt-4 text-lg font-semibold"></div>
+              </div>
+            </div>
+            <!-- Ultrasonic Sensor Chart -->
+            <div class="bg-gray-800 shadow-lg rounded-lg p-4 border border-gray-700">
+              <h3 class="text-lg font-semibold text-green-400 mb-4">Distance Monitor 🖥</h3>
+              <div style="height: 300px">
+                <canvas id="ultrasonicChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Emergency Map Section -->
+      <div id="map-section" class="absolute top-0 left-full w-full h-full bg-gray-900 transition-transform duration-1000">
+        <div class="relative h-full">
+          <!-- Back to Dashboard Button -->
+          <button
+            id="back-to-dashboard"
+            class="absolute top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 z-50"
+          >
+            Back to Dashboard
+          </button>
+      
+          <!-- Emergency Map Section -->
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3916.5926462594546!2d80.20938081533478!3d13.082680290775865!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a52662c74b6d29b%3A0x309bcb88b52b8757!2sChennai%2C%20Tamil%20Nadu%2C%20India!5e0!3m2!1sen!2sus!4v1697551111111!5m2!1sen!2sus"
+            class="w-full h-full border-0"
+            allowfullscreen=""
+            loading="lazy"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- Driver Modal -->
+    <div id="driver-modal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden z-50">
+      <div class="bg-gray-800 rounded-lg shadow-lg p-6 text-center max-w-sm w-full border border-gray-700">
+        <h2 class="text-xl font-bold text-red-400 mb-4">Anomalies Detected 🚨</h2>
+        <p class="text-gray-300 mb-4">Is another driver available to take over?</p>
+        <div class="flex justify-between">
+          <button id="driver-yes" class="bg-blue-500 px-4 py-2 rounded text-white hover:bg-blue-600">Yes</button>
+          <button id="driver-no" class="bg-gray-500 px-4 py-2 rounded text-white hover:bg-gray-600">No</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // Set Chart.js default colors for dark theme
+        Chart.defaults.color = '#9ca3af';
+        Chart.defaults.borderColor = '#374151';
+
+        const MAX_DATA_POINTS = 20;
+        const SPO2_THRESHOLD_LOW = 95;
+        const HEARTBEAT_THRESHOLD = 100;
+        const COLLISION_THRESHOLD = 30;
+        let anomalyCount = 0;
+        
+        // Initialize data arrays
+        const heartRateData = {
+          labels: Array(MAX_DATA_POINTS).fill(''),
+          values: Array(MAX_DATA_POINTS).fill(60)
+        };
+        
+        const ultrasonicData = {
+          labels: Array(MAX_DATA_POINTS).fill(''),
+          values: Array(MAX_DATA_POINTS).fill(null)
+        };
+
+        // Initialize SPO2 gauge
+        const spo2Gauge = new Gauge(document.getElementById("spo2Gauge")).setOptions({
+          angle: 0.15,
+          lineWidth: 0.44,
+          radiusScale: 0.8,
+          pointer: {
+            length: 0.6,
+            strokeWidth: 0.035,
+            color: '#ffffff'
+          },
+          limitMax: false,
+          limitMin: false,
+          strokeColor: '#374151',
+          generateGradient: true,
+          highDpiSupport: true,
+          percentColors: [
+            [0.0, "#ef4444"],    // Red for dangerous
+            [0.94, "#f59e0b"],   // Orange for warning
+            [0.95, "#60a5fa"]    // Blue for normal
+          ],
+          staticLabels: {
+            font: "12px sans-serif",
+            labels: [90, 92, 94, 96, 98, 100],
+            color: "#9ca3af",
+            fractionDigits: 0
+          }
+        });
+        spo2Gauge.maxValue = 100;
+        spo2Gauge.setMinValue(90);
+        spo2Gauge.set(98);
+        const backToDashboard = document.getElementById("back-to-dashboard");
+
+        backToDashboard.addEventListener("click", () => {
+          // Smooth scroll back to the dashboard
+          document.querySelector(".relative").scrollIntoView({ behavior: "smooth" });
+
+          // Optionally hide the map section (optional if map is part of scrolling)
+          mapSection.classList.add("hidden");
+        });
+        // Common chart options
+        const lineChartOptions = {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              display: true,
+              ticks: {
+                maxTicksLimit: 10,
+                color: '#9ca3af'
+              },
+              grid: {
+                color: '#374151'
+              }
+            },
+            y: {
+              beginAtZero: false,
+              ticks: {
+                color: '#9ca3af'
+              },
+              grid: {
+                color: '#374151'
+              }
+            }
+          },
+          animation: {
+            duration: 0
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                color: '#9ca3af'
+              }
+            }
+          }
+        };
+
+        // Initialize heart rate chart
+        const heartRateChart = new Chart(document.getElementById("heartRateChart").getContext("2d"), {
+          type: "line",
+          data: {
+            labels: heartRateData.labels,
+            datasets: [{
+              label: "Heart Rate (BPM)",
+              data: heartRateData.values,
+              borderColor: "#60a5fa",
+              borderWidth: 2,
+              fill: false,
+              tension: 0.3,
+              pointRadius: 0,
+            }],
+          },
+          options: {
+            ...lineChartOptions,
+            scales: {
+              ...lineChartOptions.scales,
+              y: {
+                beginAtZero: false,
+                min: 55,
+                max: 155,
+                grid: {
+                  color: '#374151',
+                },
+                ticks: {
+                  stepSize: 20,
+                  color: '#9ca3af'
+                }
+              }
+            }
+          },
+        });
+
+        const ultrasonicChart = new Chart(document.getElementById("ultrasonicChart").getContext("2d"), {
+          type: "line",
+          data: {
+            labels: ultrasonicData.labels,
+            datasets: [{
+              label: "Distance (cm)",
+              data: ultrasonicData.values,
+              borderColor: "#34d399",
+              fill: false,
+              tension: 0.1,
+            }],
+          },
+          options: {
+            ...lineChartOptions,
+            scales: {
+              ...lineChartOptions.scales,
+              y: {
+                beginAtZero: true,
+                suggestedMin: 10,
+                suggestedMax: 500
+              }
+            }
+          },
+        });
+
+        function updateLineChartData(dataObj, newValue) {
+          dataObj.values.shift();
+          dataObj.values.push(newValue);
+          
+          const timestamp = new Date().toLocaleTimeString();
+          dataObj.labels.shift();
+          dataObj.labels.push(timestamp);
+          
+          return {
+            labels: dataObj.labels,
+            values: dataObj.values
+          };
+        }
+
+        function getSPO2ZoneText(spo2) {
+          if (spo2 < 92) return "Dangerous SPO2 Level";
+          if (spo2 < 95) return "Warning: Low SPO2";
+          return "Normal SPO2 Level";
+        }
+
+        function updateStatusEmoji(spo2, heartRate, distance) {
+          const statusEmoji = document.getElementById('status-emoji');
+          if (spo2 < SPO2_THRESHOLD_LOW || heartRate > HEARTBEAT_THRESHOLD || distance < COLLISION_THRESHOLD) {
+            statusEmoji.textContent = "😰";
+          } else {
+            statusEmoji.textContent = "😊";
+          }
+        }
+        const driverModal = document.getElementById("driver-modal");
+      const driverYes = document.getElementById("driver-yes");
+      const driverNo = document.getElementById("driver-no");
+      const mapSection = document.getElementById("map-section");
+
+      // Modify checkThresholds to show modal
+      function checkThresholds(spo2, heartbeat, distance) {
+        const alertBox = document.getElementById('alert-box');
+        const alertMessage = document.getElementById('alert-message');
+        let alerts = [];
+        let newAnomalies = 0;
+
+        if (spo2 < SPO2_THRESHOLD_LOW) {
+          alerts.push(`Low SPO2 level detected: ${spo2}%`);
+          newAnomalies++;
+        }
+        if (heartbeat > HEARTBEAT_THRESHOLD) {
+          alerts.push(`High heart rate detected: ${heartbeat} BPM`);
+          newAnomalies++;
+        }
+        if (distance < COLLISION_THRESHOLD) {
+          alerts.push(`Collision warning! Object detected ${distance} cm away`);
+          newAnomalies++;
+        }
+
+        if (newAnomalies > 0) {
+          anomalyCount += newAnomalies;
+          document.getElementById('anomaly-count').textContent = anomalyCount;
+
+          // Show Modal if thresholds crossed
+          driverModal.classList.remove("hidden");
+        }
+
+        if (alerts.length > 0) {
+          alertMessage.textContent = alerts.join(' | ');
+          alertBox.classList.remove('hidden');
+        } else {
+          alertBox.classList.add('hidden');
+        }
+      }
+
+      // Event listeners for Modal
+      driverYes.addEventListener("click", () => {
+        driverModal.classList.add("hidden");
+        mapSection.classList.remove("hidden");
+
+        // Smooth scroll to map section
+        mapSection.scrollIntoView({ behavior: "smooth" });
+      });
+
+      driverNo.addEventListener("click", () => {
+        driverModal.classList.add("hidden");
+      });
+        /*function checkThresholds(spo2, heartbeat, distance) {
+          const alertBox = document.getElementById('alert-box');
+          const alertMessage = document.getElementById('alert-message');
+          let alerts = [];
+          let newAnomalies = 0;
+
+          if (spo2 < SPO2_THRESHOLD_LOW) {
+            alerts.push(`Low SPO2 level detected: ${spo2}%`);
+            newAnomalies++;
+          }
+          if (heartbeat > HEARTBEAT_THRESHOLD) {
+            alerts.push(`High heart rate detected: ${heartbeat} BPM`);
+            newAnomalies++;
+          }
+          if (distance < COLLISION_THRESHOLD) {
+            alerts.push(`Collision warning! Object detected ${distance} cm away`);
+            newAnomalies++;
+          }
+
+          if (newAnomalies > 0) {
+            anomalyCount += newAnomalies;
+            document.getElementById('anomaly-count').textContent = anomalyCount;
+          }
+
+          if (alerts.length > 0) {
+            alertMessage.textContent = alerts.join(' | ');
+            alertBox.classList.remove('hidden');
+          } else {
+            alertBox.classList.add('hidden');
+          }
+        }*/
+
+        async function updateDashboard() {
+          try {
+            const response = await fetch('/api/health');
+            const data = await response.json();
+
+            const heartRate = data.heartbeat;
+            const spo2Level = data.stress || 98; // Default value for demo
+            const distance = data.distance;
+
+            // Update current values
+            document.getElementById("current-heart-rate").textContent = `${heartRate} BPM`;
+            document.getElementById("current-spo2-level").textContent = `${spo2Level}%`;
+            document.getElementById("current-ultrasonic").textContent = `${distance} cm`;
+
+            // Update status emoji
+            updateStatusEmoji(spo2Level, heartRate, distance);
+
+            // Check thresholds and show alerts
+            checkThresholds(spo2Level, heartRate, distance);
+
+            // Update Heart Rate chart
+            const updatedHeartRate = updateLineChartData(heartRateData, heartRate);
+            heartRateChart.data.labels = updatedHeartRate.labels;
+            heartRateChart.data.datasets[0].data = updatedHeartRate.values;
+            heartRateChart.update('none');
+
+            // Update SPO2 Gauge
+            spo2Gauge.set(spo2Level);
+            document.getElementById('spo2-zone').textContent = getSPO2ZoneText(spo2Level);
+            document.getElementById('spo2-zone').style.color = 
+              spo2Level < 92 ? '#ef4444' : 
+              spo2Level < 95 ? '#f59e0b' : '#60a5fa';
+
+            // Update Ultrasonic Sensor chart
+            const updatedUltrasonic = updateLineChartData(ultrasonicData, distance);
+            ultrasonicChart.data.labels = updatedUltrasonic.labels;
+            ultrasonicChart.data.datasets[0].data = updatedUltrasonic.values;
+            ultrasonicChart.update('none');
+
+          } catch (error) {
+            console.error("Error updating dashboard:", error);
+          }
+        }
+
+        // Update dashboard every second
+        setInterval(updateDashboard, 1000);
+      });
+    </script>
+  </body>
+</html>
